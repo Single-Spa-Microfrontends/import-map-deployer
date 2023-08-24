@@ -61,7 +61,7 @@ jobs:
         include:
           - environment: dev
             DEPLOYER_BUCKET: ${{ secrets.DEV_SINGLESPA_BUCKET }}
-            CF_PUBLIC_URL: storage.googleapis.com/mycompany-frontend-dev
+            CF_PUBLIC_URL: storage.googleapis.com/import-map
 
     steps:
       - name: Checkout code
