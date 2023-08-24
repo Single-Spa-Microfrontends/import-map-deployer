@@ -23,37 +23,9 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-node-
-
-  build:
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Cache node_modules
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Run tests
-        run: yarn test
-
-      - name: Build project
-        run: yarn build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: dist
-          path: dist
-
+        
   deploy-dev:
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -77,5 +49,5 @@ jobs:
           echo "Commit sha is $GITHUB_SHA. This will be the directory name under $GITHUB_REPOSITORY in Cloud Storage."
           gsutil cp -rZ dist gs://${{ matrix.DEPLOYER_BUCKET }}/${GITHUB_REPOSITORY}/${GITHUB_SHA}
           echo "Updating import map"
-          curl -u ${{ secrets.DEPLOYER_USERNAME }}:${{ secrets.DEPLOYER_PASSWORD }} -d '{ "service":"@redx/'"${GITHUB_REPOSITORY}"'","url":"https://'${{ matrix.CF_PUBLIC_URL }}'/'"${GITHUB_REPOSITORY}"'/'"${GITHUB_SHA}"'/'"${GITHUB_REPOSITORY}"'.js" }' -X PATCH https://${{ secrets.DEPLOYER_HOST }}/services?env=${{ matrix.environment }} -H "Accept:application/json" -H "Content-Type:application/json" --fail --insecure -i
+          curl -u ${{ secrets.DEPLOYER_USERNAME }}:${{ secrets.DEPLOYER_PASSWORD }} -d '{ "service":"@redx/'"${GITHUB_REPOSITORY}"'","url":"https://'${{ matrix.CF_PUBLIC_URL }}'/'"${GITHUB_REPOSITORY}"'/'"${GITHUB_SHA}"'/'"${GITHUB_REPOSITORY}"'.js" }' -X PATCH https://${{ secrets.DEPLOYER_HOST }}/services -H "Accept:application/json" -H "Content-Type:application/json" --fail --insecure -i
 
