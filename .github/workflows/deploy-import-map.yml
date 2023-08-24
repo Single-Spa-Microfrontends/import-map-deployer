@@ -52,16 +52,9 @@ jobs:
           name: dist
           path: dist
 
-  deploy:
+  deploy-dev:
     needs: build
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: ['dev']
-        include:
-          - environment: dev
-            DEPLOYER_BUCKET: ${{ secrets.DEV_SINGLESPA_BUCKET }}
-            CF_PUBLIC_URL: storage.googleapis.com/import-map
 
     steps:
       - name: Checkout code
@@ -76,7 +69,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@master
         with:
           service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
-          project_id: your-gcp-project-id
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
           export_default_credentials: true
 
       - name: Deploy to Google Cloud Storage
