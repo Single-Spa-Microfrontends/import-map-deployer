@@ -1,0 +1,88 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Cache node_modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Run tests
+        run: yarn test
+
+      - name: Build project
+        run: yarn build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ['dev', 'stage', 'prod']
+        include:
+          - environment: dev
+            DEPLOYER_BUCKET: ${{ secrets.DEV_SINGLESPA_BUCKET }}
+            CF_PUBLIC_URL: storage.googleapis.com/mycompany-frontend-dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+          project_id: your-gcp-project-id
+          export_default_credentials: true
+
+      - name: Deploy to Google Cloud Storage
+        run: |
+          echo "Commit sha is $GITHUB_SHA. This will be the directory name under $GITHUB_REPOSITORY in Cloud Storage."
+          gsutil cp -rZ dist gs://${{ matrix.DEPLOYER_BUCKET }}/${GITHUB_REPOSITORY}/${GITHUB_SHA}
+          echo "Updating import map"
+          curl -u ${{ secrets.DEPLOYER_USERNAME }}:${{ secrets.DEPLOYER_PASSWORD }} -d '{ "service":"@redx/'"${GITHUB_REPOSITORY}"'","url":"https://'${{ matrix.CF_PUBLIC_URL }}'/'"${GITHUB_REPOSITORY}"'/'"${GITHUB_SHA}"'/'"${GITHUB_REPOSITORY}"'.js" }' -X PATCH https://${{ secrets.DEPLOYER_HOST }}/services?env=${{ matrix.environment }} -H "Accept:application/json" -H "Content-Type:application/json" --fail --insecure -i
+
