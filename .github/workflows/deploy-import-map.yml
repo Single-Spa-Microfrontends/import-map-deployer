@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: ['dev', 'stage', 'prod']
+        environment: ['dev']
         include:
           - environment: dev
             DEPLOYER_BUCKET: ${{ secrets.DEV_SINGLESPA_BUCKET }}
