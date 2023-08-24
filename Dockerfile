@@ -1,4 +1,4 @@
 FROM singlespa/import-map-deployer
-COPY conf.json /www/
+COPY config.json /www/
 USER root
-CMD ["yarn", "start", "conf.json"]
+CMD ["yarn", "start", "config.json"]
