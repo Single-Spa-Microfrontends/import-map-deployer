@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Build and Deploy to Cloud Run
 
 on:
   push:
@@ -6,68 +6,34 @@ on:
       - main
 
 jobs:
-  setup:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+    - name: Update config.json with secrets
+      run: |
+        jq '.manifestFormat |= . + {"username":"${{ secrets.DEPLOYER_USERNAME }}", "password":"${{ secrets.DEPLOYER_PASSWORD }}"}' config.json > temp.json
+        mv temp.json config.json
 
-      - name: Set up Node.js (if using Node.js for build)
-        uses: actions/setup-node@v2
-        with:
-          node-version: '18'  # or your preferred version
+    - name: Build Docker image
+      run: |
+        docker build -t northamerica-northeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID}}/mfa-import-map-deployer/import-map:latest .
 
-      - name: Install dependencies and build (if necessary)
-        run: yarn build
+    - name: Set up gcloud CLI
+      uses: google-github-actions/setup-gcloud@v0.2.0
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
 
-      - name: Cache node_modules
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-  
-      - name: Install jq
-        run: sudo apt-get install jq
-  
-      - name: Update config.json with secrets
-        run: |
-           jq '.username = "${{ secrets.DEPLOYER_USERNAME }}" | .password = "${{ secrets.DEPLOYER_PASSWORD }}"' config.json > temp.json
-           mv temp.json config.json
-        
-  deploy-dev:
-    needs: setup
-    runs-on: ubuntu-latest
+    - name: Push Docker image
+      run: |
+        docker push northamerica-northeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID}}/mfa-import-map-deployer/import-map:latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: dist
-
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v0.2.0
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
-
-      - name: Deploy to Google Cloud Storage
-        run: |
-          echo "Commit sha is $GITHUB_SHA. This will be the directory name under $GITHUB_REPOSITORY in Cloud Storage."
-          gsutil cp -rZ dist gs://${{ secrets.GCS_BUCKET_NAME }}/${GITHUB_REPOSITORY}/${GITHUB_SHA}
-          echo "Updating import map"
-          curl -u ${{ secrets.DEPLOYER_USERNAME }}:${{ secrets.DEPLOYER_PASSWORD }} \
-              -d '{ "service":"@ssm/'"${GITHUB_REPOSITORY}"'","url":"gs://${{ secrets.GCS_BUCKET_NAME }}/'"${GITHUB_REPOSITORY}"'/'"${GITHUB_SHA}"'/'"${GITHUB_REPOSITORY}"'.js" }' \
-              -X PATCH https://${{ secrets.DEPLOYER_HOST }}/services \
-              -H "Accept:application/json" -H "Content-Type:application/json" --fail --insecure -i
-
-
+    - name: Deploy to Cloud Run
+      uses: google-github-actions/deploy-cloudrun@v1.0.2
+      with:
+        image: northamerica-northeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID}}/mfa-import-map-deployer/import-map:latest
