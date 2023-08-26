@@ -16,6 +16,14 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Set up Node.js (if using Node.js for build)
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'  # or your preferred version
+
+      - name: Install dependencies and build (if necessary)
+        run: yarn build
+
       - name: Cache node_modules
         uses: actions/cache@v2
         with:
