@@ -15,7 +15,7 @@ jobs:
 
     - name: Update config.json with secrets
       run: |
-        jq '.username = "${{ secrets.USERNAME }}", .password = "${{ secrets.PASSWORD }}"' config.json > temp.json
+        jq '. | .username = "${{ secrets.DEPLOYER_USERNAME }}" | .password = "${{ secrets.DEPLOYER_PASSWORD }}"' config.json > temp.json
         mv temp.json config.json
 
     - name: Build Docker image
