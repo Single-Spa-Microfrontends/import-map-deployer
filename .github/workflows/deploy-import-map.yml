@@ -29,9 +29,9 @@ jobs:
         service_account_key: ${{ secrets.GCP_SA_KEY }}
         export_default_credentials: true
 
-    - name: Push Docker image
-      run: |
-        docker push northamerica-northeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID}}/mfa-import-map-deployer/import-map:latest
+    # - name: Push Docker image
+    #   run: |
+    #     docker push northamerica-northeast2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID}}/mfa-import-map-deployer/import-map:latest
 
     - name: Deploy to Cloud Run
       uses: google-github-actions/deploy-cloudrun@v1.0.2
