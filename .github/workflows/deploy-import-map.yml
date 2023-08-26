@@ -29,8 +29,8 @@ jobs:
   
       - name: Update config.json with secrets
         run: |
-          jq '.manifestFormat |= . + {"username":"${{ secrets.DEPLOYER_USERNAME }}", "password":"${{ secrets.DEPLOYER_PASSWORD }}"}' config.json > temp.json
-          mv temp.json config.json
+           jq '.username = "${{ secrets.DEPLOYER_USERNAME }}" | .password = "${{ secrets.DEPLOYER_PASSWORD }}"' config.json > temp.json
+           mv temp.json config.json
         
   deploy-dev:
     needs: setup
